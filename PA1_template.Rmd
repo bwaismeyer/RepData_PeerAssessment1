@@ -4,22 +4,90 @@ output:
   html_document:
     keep_md: true
 ---
-
+Before we dive, we quickly load any supporting libraries.
+```{r library_load}
+library(ggplot2)
+library(dplyr)
+```
 
 ## Loading and preprocessing the data
+The data is included with this HTML report and the markdown files used to 
+generate the HTML report.
 
+The data starts its life as a zip file, "activity.zip", in the local working
+directory. We need to unzip the file, import the contents, and then clean up 
+the unzipped messy-ness.
 
+**Note:** This code assumes that your working directory has been set correctly.
+
+```{r unzip_import}
+# unzip the file
+unzip("./activity.zip")
+# get the data
+act <- read.csv("./activity.csv")
+# clean up the csv
+unlink("./activity.csv")
+```
+
+We then take a quick pause to add another date variable (in case we want to
+treat our dates as dates and not as factors.)
+```{r datetime}
+act$date_as_date <- strptime(as.character(act$date), "%Y-%m-%d")
+```
 
 ## What is mean total number of steps taken per day?
+Our data has many step measurements for each day.
 
+```{r mean_steps}
+# first we get the total steps for each unique day
+steps_per_day <- aggregate(steps ~ date, act, sum, na.rm = TRUE)
 
+# then we take the mean of that aggregation
+mean(steps_per_day$steps)
+```
+
+We may also want to consider the median value...
+```{r median_steps}
+median(steps_per_day$steps)
+```
+
+Or just visualize the distribution of steps per day.
+```{r hist_steps}
+ggplot(act, aes(x = date_as_date, y = steps)) + 
+    geom_histogram(stat = "identity")
+```
 
 ## What is the average daily activity pattern?
+First we find the average steps per interval (across days).
+```{r mean_interval}
+mean_per_interval <- aggregate(steps ~ interval, act, mean, na.rm = T)
+```
 
+Then we make a histogram showing off the interval data.
+```{r hist_interval}
+ggplot(mean_per_interval, aes(x = interval, y = steps)) + 
+    geom_histogram(bindwidth = 1, stat = "identity")
+```
 
+Final we note which of the intervals had the largest average number of steps.
+```{r largest_interval}
+# sort largest to smallest, return just the first (largest) result
+arrange(mean_per_interval, desc(steps))[1,]
+```
 
 ## Imputing missing values
+Determine how many NAs are in the data set.
+```{r get_nas}
+summary(act)
+```
 
+Replace any NAs with the median for the given day.
+```{r imputed_data}
+```
 
+Show the updated mean and median per day, along with the updated histogram.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+Add a new factor specifying weekdays and weekends.
+
+Contrast weekdays and weekends via plot.
