@@ -96,12 +96,12 @@ Then we make a histogram showing off the interval data.
 
 ```r
 ggplot(mean_per_interval, aes(x = interval, y = steps)) + 
-    geom_histogram(bindwidth = 1, stat = "identity")
+    geom_line()
 ```
 
 ![](PA1_template_files/figure-html/hist_interval-1.png) 
 
-Final we note which of the intervals had the largest average number of steps.
+Finally we note which of the intervals had the largest average number of steps.
 
 ```r
 # sort largest to smallest, return just the first (largest) result
@@ -139,12 +139,95 @@ summary(act)
 ## 
 ```
 
-Replace any NAs with the median for the given day.
+Replace any NAs with the mean of its interval.
 
+```r
+# first we define a function to replace NAs with their interval means
+impute_means <- function(act, mean_per_interval) {
+    # for each interval in our mean_per_interval collection...
+    for(index in 1:nrow(mean_per_interval)) {
+        # find which rows in our primary data match the interval AND are NA
+        na_indices <- which(act$interval == mean_per_interval$interval[[index]] &
+                                is.na(act$steps)
+        )
+        # get the mean of the current interval
+        subset_mean <- mean_per_interval$steps[[index]]
+        
+        # replace the NAs in the primary data for that interval with
+        # the interval mean
+        act$steps <- replace(act$steps, na_indices, subset_mean)
+    }
+    
+    # return the new dataset
+    return(act)
+}
+
+# then we call the function to get the data set with imputed values
+act_imputed <- impute_means(act, mean_per_interval)
+```
 
 Show the updated mean and median per day, along with the updated histogram.
+
+```r
+# first we aggregate the steps by day again...
+imputed_steps_per_day <- aggregate(steps ~ date, act_imputed, sum)
+
+# now we report the mean...
+mean(imputed_steps_per_day$steps)
+```
+
+```
+## [1] 10766.19
+```
+
+```r
+# and the median...
+median(imputed_steps_per_day$steps)
+```
+
+```
+## [1] 10766.19
+```
+
+```r
+# and the histogram...
+ggplot(act_imputed, aes(x = date_as_date, y = steps)) + 
+    geom_histogram(stat = "identity")
+```
+
+![](PA1_template_files/figure-html/new_steps-1.png) 
+
+The histogram is nicely more filled in than before imputing but the overall
+mean and average changed little.
 
 ## Are there differences in activity patterns between weekdays and weekends?
 Add a new factor specifying weekdays and weekends.
 
+```r
+# if the weekday is equivalent to Saturday or Sunday...
+act_imputed$day_type <- ifelse(weekdays(act_imputed$date_as_date) == "Saturday" | 
+                                   weekdays(act_imputed$date_as_date) == "Sunday", 
+                               # call it a weekend
+                               "Weekend", 
+                               # otherwise call it a weekday
+                               "Weekday")
+```
+
+Then we need to get the average steps by interval + day type.
+
+```r
+mean_per_interval_day <- aggregate(steps ~ interval + day_type, 
+                                   act_imputed, 
+                                   mean)
+```
+
+
 Contrast weekdays and weekends via plot.
+
+```r
+ggplot(mean_per_interval_day, aes(x = interval, y = steps)) + 
+    geom_line() +
+    facet_wrap(~day_type)
+```
+
+![](PA1_template_files/figure-html/daytype_plot-1.png) 
